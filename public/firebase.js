@@ -1,14 +1,21 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from 'firebase/app';
+// firebase.js
+console.log('firebase.js loaded');
+
+// import { nanoid } from 'https://cdnjs.cloudflare.com/ajax/libs/nanoid/5.0.7/index.browser.js';
+// Import the Firebase SDK via CDN
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+
+// If you enabled Analytics in your project, add the Firebase SDK for Google Analytics
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js';
+
+// Add Firebase products that you want to use
 import {
   getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  createUserWithEmailAndPassword,
   signOut
-} from 'firebase/auth';
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   getFirestore,
   doc,
@@ -21,20 +28,18 @@ import {
   where,
   getDoc,
   setDoc
-} from 'firebase/firestore';
-
-import { getStorage, ref, uploadBytes } from 'firebase/storage';
-import { getAnalytics } from 'firebase/analytics';
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Firebase configuration
 const firebaseConfig = {
   apiKey: 'AIzaSyBiscdF0tuWqOHERdRQdNlkvbQsmClDLbo',
   authDomain: 'dreamlog-7dff3.firebaseapp.com',
+  databaseURL: 'https://dreamlog-7dff3-default-rtdb.europe-west1.firebasedatabase.app',
   projectId: 'dreamlog-7dff3',
   storageBucket: 'dreamlog-7dff3.appspot.com',
   messagingSenderId: '5989316723',
-  appId: '1:5989316723:web:0f900af2b834566a8cd206',
-  measurementId: 'G-RWSXHD4PFH'
+  appId: '1:5989316723:web:72539d64015f7a5f8cd206',
+  measurementId: 'G-F1V81KG437'
 };
 
 // Initialize Firebase services
@@ -47,13 +52,85 @@ let currentUser = null;
 let currentSelectedEntry = null;
 let base64String = null;
 
+let path = null;
+
+document.addEventListener('DOMContentLoaded', function (event) {
+  // event.preventDefault();
+  // event.stopPropagation();
+  loadSavedColorVariables();
+  // initializePage('firebase.js');
+  // console.log('DOM fully loaded and parsed');
+});
+
+export async function initializePage(pathName) {
+  console.log('pathName: ' + pathName);
+  path = pathName;
+
+  const saveButton = document.getElementById('button-save');
+  const loginButton = document.getElementById('button-signin');
+  const registerButton = document.getElementById('button-register');
+  const settingsSaveButton = document.getElementById('button-settings-save');
+  const saveChangesButton = document.getElementById('pop-button-save');
+
+  // Set up auth state listener
+  await onAuthStateChanged(auth, (user) => {
+    // Functions that launch after page refresh or auth state change
+    console.log('currentUser set');
+    currentUser = user;
+
+    setNavbarContent();
+
+    if (currentUser) {
+      updateLastOnlineTimer();
+      if (path === '/settings' || path === '/profile') {
+        console.log('called setUserProfileContents() successfully');
+        setUserProfileContents();
+      }
+      console.log(`User is signed in with UID: ${currentUser.uid}`);
+    } else {
+      console.log('User is signed out');
+      console.log('did NOT called setUserProfileContents()');
+    }
+    // Execute page-specific actions
+    if (path === '/journal') {
+      console.log('trying to set list view content');
+      setListViewContent();
+      console.log('handle save button');
+      handleSaveButton(saveButton);
+      saveChangesButton.addEventListener('click', saveChanges);
+    } else if (path === '/settings') {
+      console.log('handle settings save button');
+
+      handleSettingsSaveButton(settingsSaveButton);
+      handleImageSelect();
+    } else if (path === '/signin') {
+      if (loginButton) {
+        handleLoginButton(loginButton);
+        console.log('login button found!');
+      } else {
+        console.log('login button NOT found!');
+      }
+    } else if (path === '/register') {
+      console.log('register button found!');
+
+      handleRegisterButton(registerButton);
+    } else if (path === '/friends') {
+      console.log('friends button found!');
+
+      handleSearchBar();
+    }
+  });
+}
+
 // Set navbar links if user is signed on/off
 function setNavbarContent() {
   const navbarMenu = document.getElementById('navbar-menu');
   const mobileMenu = document.getElementById('mobile-menu');
 
+  console.log('trying to set navbar content');
   if (currentUser) {
     // If user is signed in
+
     navbarMenu.innerHTML = `
     <li class="navbar__item"><a href="/journal" data-link class="navbar__links">Journal</a></li>
     <li class="navbar__item"><a href="/friends" data-link class="navbar__links">Friends</a></li>
@@ -128,7 +205,7 @@ async function setUserProfileContents() {
       const userData = doc.data();
 
       // Get right user with email check
-      if (userData.email === currentUser.email && window.location.pathname === '/profile') {
+      if (userData.email === currentUser.email && path === '/profile') {
         // Set username, from db
         username.textContent = userData.username;
         // Set accent colors, from db
@@ -144,7 +221,7 @@ async function setUserProfileContents() {
         labelLastOnline.textContent = userData.lastOnlineDate + ' ' + userData.lastOnlineTime;
         //joined
         labelJoined.textContent = userData.joined ? userData.joined : 'unknown';
-      } else if (userData.email === currentUser.email && window.location.pathname === '/settings') {
+      } else if (userData.email === currentUser.email && path === '/settings') {
         // Set settings fields values
         usernameField.value = userData.username;
         accentColor.value = rootSecondaryColor;
@@ -213,55 +290,6 @@ async function getDocumentsByUserId(collectionName, neededVariable, variable) {
   }
   console.log(documents);
   return documents;
-}
-
-// On every page load and refresh
-document.addEventListener('DOMContentLoaded', function (event) {
-  event.preventDefault();
-  loadSavedColorVariables();
-  initializePage();
-  console.log('DOM fully loaded and parsed');
-});
-
-async function initializePage() {
-  const saveButton = document.getElementById('button-save');
-  const loginButton = document.getElementById('button-signin');
-  const registerButton = document.getElementById('button-register');
-  const settingsSaveButton = document.getElementById('button-settings-save');
-  const saveChangesButton = document.getElementById('pop-button-save');
-
-  // Set up auth state listener
-  await onAuthStateChanged(auth, (user) => {
-    // Functions that launch after page refresh or auth state change
-    currentUser = user;
-    setNavbarContent();
-
-    if (currentUser) {
-      updateLastOnlineTimer();
-      if (window.location.pathname === '/settings' || window.location.pathname === '/profile') {
-        setUserProfileContents();
-      }
-      console.log(`User is signed in with UID: ${currentUser.uid}`);
-    } else {
-      console.log('User is signed out');
-    }
-
-    // Execute page-specific actions
-    if (window.location.pathname === '/journal') {
-      setListViewContent();
-      handleSaveButton(saveButton);
-      saveChangesButton.addEventListener('click', saveChanges);
-    } else if (window.location.pathname === '/settings') {
-      handleSettingsSaveButton(settingsSaveButton);
-      handleImageSelect();
-    } else if (window.location.pathname === '/signin') {
-      handleLoginButton(loginButton);
-    } else if (window.location.pathname === '/register') {
-      handleRegisterButton(registerButton);
-    } else if (window.location.pathname === '/friends') {
-      handleSearchBar();
-    }
-  });
 }
 
 async function updateLastOnlineTimer() {
@@ -773,7 +801,6 @@ function handleSettingsSaveButton(button) {
 }
 
 function handleLoginButton(button) {
-  console.log('login button loaded');
   button.addEventListener('click', function (event) {
     event.preventDefault();
 
@@ -880,9 +907,12 @@ function handleRegisterButton(button) {
 }
 
 function handleSaveButton(button) {
+  console.log('save button found: ' + button);
+
   button.addEventListener('click', async function (event) {
     event.preventDefault();
     event.stopPropagation();
+    console.log('clicked save button');
 
     const journalEntry = JournalEntry.journalMain();
     const customDocId = generateCustomId();
