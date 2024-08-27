@@ -1,6 +1,7 @@
-// router.js
-import { initializePage } from './firebase.js'; // Adjust the path accordingly
+// public/router.js
 console.log('router.js loaded');
+
+import { initializePage } from './main.js';
 
 const routes = {
   404: { title: '404', template: 'templates/404.html' },
