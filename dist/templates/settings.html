@@ -1,0 +1,48 @@
+<div class="profile__container">
+  <div class="card" id="profilecard">
+    <div class="card-content">
+      <p class="heading">Settings</p>
+      <h class="cool-line"></h>
+
+      <label for="usernameInput">Username</label>
+      <input class="input-field" id="usernameInput" />
+      <label for="image-input" id="labelProfilePicture">Profile Picture</label>
+      <!-- image picker -->
+      <div class="image-input-wrapper">
+        <div class="image-input">
+          <input type="file" accept="image/*" id="image-input" />
+          <label for="image-input">
+            <div class="upload-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+          </label>
+        </div>
+      </div>
+      <!-- other -->
+      <div class="color-pickers">
+        <div>
+          <input type="color" id="secondary-color" value="#e869bd" />
+          <label for="primary-color">Accent Color</label>
+        </div>
+        <div>
+          <input type="color" id="secondary-color-dark" value="#6f0166" />
+          <label for="primary-color">Darker Accent</label>
+        </div>
+      </div>
+    </div>
+
+    <button class="button" id="button-settings-save">Save</button>
+  </div>
+</div>

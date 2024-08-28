@@ -1,18 +1,48 @@
 // src/utils/helpers.js
 console.log('helpers.js loaded');
 
-// import app from './firebase/firebase-config.js';
-// import db from './firebase/firestore.js';
-// import auth from './firebase/auth.js';
-// import { nanoid } from 'https://cdnjs.cloudflare.com/ajax/libs/nanoid/5.0.7/index.browser.js';
-// import { currentUser, currentSelectedEntry, base64String, path } from '/public/main.js';
+import { auth } from '/src/firebase/auth.js';
+import { db } from '/src/firebase/firestore.js';
+import {
+  getFirestore,
+  doc,
+  updateDoc,
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  query,
+  where,
+  getDoc,
+  setDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signOut
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+import { nanoid } from 'https://cdnjs.cloudflare.com/ajax/libs/nanoid/5.0.7/index.browser.js';
+import {
+  setCurrentUser,
+  setCurrentSelectedEntry,
+  setBase64String,
+  setPath,
+  getCurrentUser,
+  getCurrentSelectedEntry,
+  getBase64String,
+  getPath
+} from '../state.js';
 
 function setNavbarContent() {
   const navbarMenu = document.getElementById('navbar-menu');
   const mobileMenu = document.getElementById('mobile-menu');
 
   console.log('trying to set navbar content');
-  if (currentUser) {
+  if (getCurrentUser()) {
     // If user is signed in
 
     navbarMenu.innerHTML = `
@@ -46,7 +76,7 @@ function setNavbarContent() {
       signOut(auth)
         .then(() => {
           console.log('Signed out successfully');
-          // window.location.href = '/signin.html';
+          window.location.href = '/signin';
         })
         .catch((error) => {
           console.error('Error signing out:', error);
@@ -88,7 +118,7 @@ async function setUserProfileContents() {
       const userData = doc.data();
 
       // Get right user with email check
-      if (userData.email === currentUser.email && path === '/profile') {
+      if (userData.email === getCurrentUser().email && getPath() === '/profile') {
         // Set username, from db
         username.textContent = userData.username;
         // Set accent colors, from db
@@ -104,7 +134,7 @@ async function setUserProfileContents() {
         labelLastOnline.textContent = userData.lastOnlineDate + ' ' + userData.lastOnlineTime;
         //joined
         labelJoined.textContent = userData.joined ? userData.joined : 'unknown';
-      } else if (userData.email === currentUser.email && path === '/settings') {
+      } else if (userData.email === getCurrentUser().email && getPath() === '/settings') {
         // Set settings fields values
         usernameField.value = userData.username;
         accentColor.value = rootSecondaryColor;
@@ -121,7 +151,7 @@ async function setListViewContent() {
     ' <div class="list-header">My Dream entries <svg xmlns="http://www.w3.org/2000/svg" height="30px" viewBox="0 -960 960 960" width="30px" fill="#cbd5e0"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></svg></div> '; // Clear previous content and add header
 
   try {
-    const documents = await getDocumentsByUserId('entries', 'userID', currentUser.uid);
+    const documents = await getDocumentsByUserId('entries', 'userID', getCurrentUser().uid);
     documents.forEach((doc) => {
       const textContentShort = doc.text.substring(0, 20);
       const listItem = document.createElement('div');
@@ -190,7 +220,7 @@ async function updateLastOnlineTimer() {
       lastOnlineTime: timeStr
     };
 
-    const docRef = doc(db, 'users', currentUser.uid); // Reference to the specific document
+    const docRef = doc(db, 'users', getCurrentUser().uid); // Reference to the specific document
     await updateDoc(docRef, updatedData); // Perform the update
     console.log('updated online status timer');
   } catch (error) {
@@ -216,8 +246,6 @@ function handleSearchBar() {
   const searchFriends = async () => {
     friendLV.innerHTML = ''; // Clear previous
     // Search by name
-    console.log('friendlist length: ' + friendsList.length);
-
     try {
       const searchQuery = searchBar.value.trim().toLowerCase(); // Normalize query
       console.log(`Searching for friends with token: ${searchQuery}`);
@@ -274,10 +302,10 @@ function handleSearchBar() {
 
     if (!isFriend) {
       const addFriendIcon = document.getElementById(`container-button-${foundUser.id}`);
-      addFriendIcon.addEventListener('click', () => sendFriendRequest(currentUser.uid, foundUser.id));
+      addFriendIcon.addEventListener('click', () => sendFriendRequest(getCurrentUser().uid, foundUser.id));
     } else if (isFriend) {
       const delFriendIcon = document.getElementById(`container-button-${foundUser.id}`);
-      delFriendIcon.addEventListener('click', () => deleteFriendship(currentUser.uid, foundUser.id));
+      delFriendIcon.addEventListener('click', () => deleteFriendship(getCurrentUser().uid, foundUser.id));
     }
   };
 
@@ -298,7 +326,7 @@ function handleSearchBar() {
       //userId2 = someone sent you req
       const q = query(
         collection(db, 'friends'),
-        where('userId2', '==', currentUser.uid),
+        where('userId2', '==', getCurrentUser().uid),
         where('status', '==', 'pending')
       );
       const querySnapshot = await getDocs(q);
@@ -330,14 +358,14 @@ function handleSearchBar() {
       // find accepted friend request where userId1 equals currentUser.uid
       const q1 = query(
         collection(db, 'friends'),
-        where('userId1', '==', currentUser.uid),
+        where('userId1', '==', getCurrentUser().uid),
         where('status', '==', 'accepted')
       );
 
       // find accepted friend request where userId2 equals currentUser.uid
       const q2 = query(
         collection(db, 'friends'),
-        where('userId2', '==', currentUser.uid),
+        where('userId2', '==', getCurrentUser().uid),
         where('status', '==', 'accepted')
       );
 
@@ -475,6 +503,15 @@ function handleSearchBar() {
         status: 'pending'
       });
       console.log('Friend request made:', customDocId);
+      Swal.fire({
+        title: 'Friend request made!',
+        text: 'hope they add you back :)',
+        icon: 'success',
+        confirmButtonText: 'yippii',
+        background: '#f9f9f9',
+        confirmButtonColor: '#3085d6',
+        buttonsStyling: true
+      });
     } catch (error) {
       console.error('Error sending friend request:', error);
     }
@@ -524,10 +561,10 @@ function handleImageSelect() {
             ctx.drawImage(img, 0, 0, 150, 150);
 
             // Get the Base64 string of the resized image
-            base64String = canvas.toDataURL('image/png');
+            setBase64String(canvas.toDataURL('image/png'));
 
             // Display the Base64 string
-            console.log('base64 in variable: ' + base64String.substring(0, 20) + '...');
+            console.log('base64 in variable: ' + getBase64String().substring(0, 20) + '...');
 
             labelProfilePicture.textContent = 'Profile Picture (Image Selected)';
           };
@@ -563,9 +600,9 @@ async function saveChanges(event) {
       stars: starCategory.value
     };
 
-    const docRef = doc(db, 'entries', currentSelectedEntry.id); // Reference to the specific document
+    const docRef = doc(db, 'entries', getCurrentSelectedEntry().id); // Reference to the specific document
     await updateDoc(docRef, updatedData); // Perform the update
-    console.log('Document updated successfully:', currentSelectedEntry.id);
+    console.log('Document updated successfully:', getCurrentSelectedEntry().id);
 
     popup.style.display = 'none';
     backdrop.style.display = 'none';
@@ -600,7 +637,7 @@ function handleEditSvg(editButton, itemInfo) {
     popup.style.display = popup.style.display === 'flex' ? 'none' : 'flex';
     backgroundBlur.style.display = backgroundBlur.style.display === 'block' ? 'none' : 'block';
 
-    currentSelectedEntry = itemInfo;
+    setCurrentSelectedEntry(itemInfo);
     console.log(itemInfo.id);
   };
 
@@ -651,7 +688,7 @@ function handleSettingsSaveButton(button) {
     const accentColorDark = document.getElementById('secondary-color-dark').value;
 
     try {
-      const userRef = doc(db, 'users', currentUser.uid);
+      const userRef = doc(db, 'users', getCurrentUser().uid);
 
       // Fetch current user data
       const userDoc = await getDoc(userRef);
@@ -665,13 +702,13 @@ function handleSettingsSaveButton(button) {
       };
 
       // Only update avatarURL if a new image has been selected
-      if (base64String) {
-        console.log('base64 added to updatedData: ' + base64String.substring(0, 20) + '...');
-        updateData.avatarURL = base64String;
+      if (getBase64String()) {
+        console.log('base64 added to updatedData: ' + getBase64String().substring(0, 20) + '...');
+        updateData.avatarURL = getBase64String();
       }
 
       await updateDoc(userRef, updateData);
-      // window.location.href = 'profile.html';
+      window.location.href = '/profile';
     } catch (error) {
       console.error('db update error: ' + error);
     }
@@ -688,7 +725,7 @@ function handleLoginButton(button) {
     signInWithEmailAndPassword(auth, email, password)
       .then(async (userCredential) => {
         console.log('User signed in:', userCredential.user);
-        // window.location.href = '/profile.html';
+        window.location.href = '/profile';
         console.log('navigate to profile');
       })
       .catch((error) => {
@@ -757,7 +794,7 @@ function handleRegisterButton(button) {
             accentColorDark: '#6f0166',
             joined: joinedDate
           });
-          // window.location.href = '/profile.html';
+          window.location.href = '/profile';
         })
         .catch((error) => {
           Swal.fire({
@@ -854,7 +891,7 @@ class JournalEntry {
     const day = String(now.getDate()).padStart(2, '0');
 
     const dateValue = `${day}-${month}-${year}`;
-    const userIDValue = currentUser.uid;
+    const userIDValue = getCurrentUser().uid;
 
     return new JournalEntry(titleValue, textValue, selectedStarValue, categoryValue, dateValue, userIDValue);
   }
@@ -882,7 +919,7 @@ function generateCustomId() {
   return `${dateStr}_${uniquePart}`;
 }
 
-export default {
+export {
   setNavbarContent,
   setUserProfileContents,
   setListViewContent,
